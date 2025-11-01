@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Check Me Up — PhishGuard Demo</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Check Me Up</h1>
+      <p class="subtitle">AI-assisted phishing URL & email detector — local demo</p>
+    </header>
+
+    <main>
+      <div class="card">
+        <label for="inputText">Paste a URL or an email body</label>
+        <textarea id="inputText" placeholder="e.g. http://secure-paypal-login.xyz"></textarea>
+        <div class="row">
+          <button id="checkBtn">Check Me Up</button>
+          <button id="clearBtn" class="alt">Clear</button>
+        </div>
+      </div>
+
+      <div id="result" class="card hidden">
+        <h3>Result</h3>
+        <div id="summary"></div>
+        <pre id="featuresPre"></pre>
+      </div>
+
+      <footer>
+        <p>Local demo • Not production-ready • Project: <strong>Check Me Up</strong></p>
+      </footer>
+    </main>
+  </div>
+
+<script>
+document.getElementById('checkBtn').onclick = async function(){
+  const text = document.getElementById('inputText').value.trim();
+  if(!text){ alert('Please paste a URL or email body'); return; }
+  const resBox = document.getElementById('result');
+  resBox.classList.remove('hidden');
+  document.getElementById('summary').innerText = 'Checking...';
+  document.getElementById('featuresPre').innerText = '';
+  try{
+    const resp = await fetch('/api/predict', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({text})
+    });
+    const data = await resp.json();
+    if(resp.ok){
+      const isPhish = data.prediction === 'phishing';
+      document.getElementById('summary').innerHTML = isPhish ?
+        `<span class="alert">⚠️ Phishing likely (${(data.phishing_probability*100).toFixed(1)}% confidence)</span>` :
+        `<span class="safe">✅ Likely legitimate (${((1-data.phishing_probability)*100).toFixed(1)}% confidence)</span>`;
+      document.getElementById('featuresPre').innerText = JSON.stringify(data.features, null, 2);
+    } else {
+      document.getElementById('summary').innerText = data.error || 'Error';
+    }
+  } catch (e){
+    document.getElementById('summary').innerText = 'Request failed: '+e.toString();
+  }
+};
+
+document.getElementById('clearBtn').onclick = function(){
+  document.getElementById('inputText').value='';
+  document.getElementById('result').classList.add('hidden');
+};
+</script>
+</body>
+</html>
